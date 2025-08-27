@@ -1,0 +1,48 @@
+/**
+ * Função para interação com a API da OpenAI (RAG simplificado).
+ * @param {string} apiKey - Sua chave da API da OpenAI (sk-...).
+ * @param {string} prompt - Pergunta ou instrução em texto.
+ * @param {range} range - Intervalo de dados a serem usados como contexto (opcional).
+ * @return {string} Resposta em texto processada pela IA.
+ * @customfunction
+ */
+function RAG(apiKey, prompt, range) {
+  try {
+    // Junta os dados do intervalo em texto
+    let data = "";
+    if (range) {
+      if (Array.isArray(range)) {
+        data = range.flat().join("\n");
+      } else {
+        data = range.toString();
+      }
+    }
+
+    const text = `Prompt: ${prompt}\n\nContexto dos dados:\n${data}`;
+
+    // Configuração da API
+    const url = "https://api.openai.com/v1/chat/completions";
+    const payload = {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "Você é um assistente que responde apenas em texto, de forma clara e resumida." },
+        { role: "user", content: text }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    };
+
+    const options = {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + apiKey },
+      payload: JSON.stringify(payload)
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const json = JSON.parse(response.getContentText());
+    return json.choices[0].message.content.trim();
+  } catch (err) {
+    return "Erro: " + err.message;
+  }
+}
