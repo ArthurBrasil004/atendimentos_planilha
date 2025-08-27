@@ -1,0 +1,66 @@
+function aplicarFiltro() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+
+  // Confirmação
+  if (ui.alert('Confirmar Filtragem', 'Deseja realmente realizar a filtragem?', ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+    ui.alert('Operação cancelada.');
+    return;
+  }
+
+  const nomesPlanilhas = ["ATENDIMENTO"];
+  const configuracoes = {
+    "ATENDIMENTO": { intervalo: "O2:O", coluna: 15 }
+    // Caso queira, adicione mais páginas
+    };
+  const criterio = SpreadsheetApp.newFilterCriteria().whenNumberEqualTo(1).build();
+
+  // Pega todas as planilhas existentes de uma vez
+  const todasPlanilhas = spreadsheet.getSheets();
+  let contadorFiltro = 0;
+
+  todasPlanilhas.forEach(sheet => {
+    const nome = sheet.getName();
+    if (nomesPlanilhas.includes(nome)) {
+      // Remove filtro existente
+      const filter = sheet.getFilter();
+      if (filter) filter.remove();
+
+      // Aplica novo filtro
+      const config = configuracoes[nome];
+      sheet.getRange(config.intervalo).createFilter().setColumnFilterCriteria(config.coluna, criterio);
+      contadorFiltro++;
+    }
+  });
+
+  ui.alert(`Filtros aplicados com sucesso! (${contadorFiltro} planilhas afetadas)`);
+}
+
+function removerFiltros() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+
+  // Confirmação
+  if (ui.alert('Confirmar Remoção de Filtros', 'Deseja realmente remover todos os filtros?', ui.ButtonSet.YES_NO) !== ui.Button.YES) {
+    ui.alert('Operação cancelada.');
+    return;
+  }
+
+  const nomesPlanilhas = ["ATENDIMENTO"];
+
+  const todasPlanilhas = spreadsheet.getSheets();
+  let contadorRemocoes = 0;
+
+  todasPlanilhas.forEach(sheet => {
+    const nome = sheet.getName();
+    if (nomesPlanilhas.includes(nome)) {
+      const filter = sheet.getFilter();
+      if (filter) {
+        filter.remove();
+        contadorRemocoes++;
+      }
+    }
+  });
+
+  ui.alert(`Filtros removidos com sucesso! (${contadorRemocoes} planilhas afetadas)`);
+}
