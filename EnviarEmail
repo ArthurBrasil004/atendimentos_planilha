@@ -1,0 +1,92 @@
+function enviarPDFPorEmail() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ui = SpreadsheetApp.getUi();
+  
+  const response = ui.alert(
+    'Confirmar email',
+    'Deseja realmente enviar o e-mail?',
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (response !== ui.Button.YES) {
+    ui.alert('Operação cancelada.');
+    return;
+  }
+
+  const spreadsheetId = ss.getId();
+  const spreadsheetName = ss.getName();
+  const hoje = new Date();
+  const dataFormatada = Utilities.formatDate(hoje, "GMT-3", "dd/MM/yyyy");
+  const emailRecipient = "SEU_EMAIL@gmail.com";
+  const emailSubject = "Relatório em PDF - Acompanhamento de Atividades";
+  const area = ss.getRange('C3').getValue();
+  let ccEmail
+  
+  const areaMap = {
+    "ARTHUR BRASIL": "SEU_EMAIL@gmail.com",
+    "OUTRO_EMAIL": "@gmail.com",
+    "OUTRO_EMAIL": "@gmail.com",
+    "OUTRO_EMAIL": "@gmail.com",
+    "OUTRO_EMAIL": "@gmail.com"
+  };
+  
+  ccEmail = areaMap[area] || "ERRO";
+  
+  let textoMeses = "relatório de atividades";
+  const dashboardSheet = ss.getSheetByName("Dashboard");
+  
+  if (dashboardSheet) {
+    const valores = dashboardSheet.getRange("B5:C5").getDisplayValues()[0];
+    const mesInicio = valores[0].trim();
+    const mesFim = valores[1].trim();
+    
+    if (mesInicio && mesFim && mesInicio !== mesFim) {
+      textoMeses = `relatório dos meses de ${converterAbreviacaoMes(mesInicio)} a ${converterAbreviacaoMes(mesFim)}`;
+    } else if (mesInicio) {
+      textoMeses = `relatório do mês de ${converterAbreviacaoMes(mesInicio)}`;
+    }
+  }
+
+  try {
+    const ssId = ss.getId();
+    const dashboard = ss.getSheetByName('DASHBOARD');
+    const atendimento = ss.getSheetByName('ATENDIMENTO');
+    const token = ScriptApp.getOAuthToken();
+
+    const base = `https://docs.google.com/spreadsheets/d/${ssId}/export?format=pdf&size=A4&fitw=true&gridlines=false&printtitle=false&sheetnames=false&pagenum=false&attachment=true`;
+
+    const dashboardBlob = UrlFetchApp.fetch(
+      `${base}&portrait=true&gid=${dashboard.getSheetId()}`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    ).getBlob().setName(`${spreadsheetName} - DASHBOARD - ${dataFormatada}.pdf`);
+
+    const atendimentoBlob = UrlFetchApp.fetch(
+      `${base}&portrait=false&gid=${atendimento.getSheetId()}`,
+      { headers: { Authorization: 'Bearer ' + token } }
+    ).getBlob().setName(`${spreadsheetName} - ATENDIMENTO - ${dataFormatada}.pdf`);
+
+    MailApp.sendEmail({
+      to: emailRecipient,
+      cc: ccEmail,
+      subject: emailSubject,
+      body: `Segue em anexo o ${textoMeses}.\n\nEste relatório foi gerado automaticamente em ${dataFormatada}.`,
+      attachments: [dashboardBlob, atendimentoBlob]
+    });
+
+    ss.toast("E-mail enviado com sucesso para " + emailRecipient, "Envio Concluído", 5);
+  } catch (error) {
+    Logger.log("Erro ao enviar e-mail: " + error.toString());
+    ss.toast("Erro ao enviar e-mail: " + error.toString(), "Erro", 10);
+  }
+}
+
+function converterAbreviacaoMes(abreviacao) {
+  const meses = {
+    "jan": "Janeiro", "fev": "Fevereiro", "mar": "Março", "abr": "Abril", 
+    "mai": "Maio", "jun": "Junho", "jul": "Julho", "ago": "Agosto", 
+    "set": "Setembro", "out": "Outubro", "nov": "Novembro", "dez": "Dezembro"
+  };
+  
+  abreviacao = abreviacao.toLowerCase().replace(".", "");
+  return meses[abreviacao] || abreviacao;
+}
